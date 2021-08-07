@@ -1,0 +1,138 @@
+# -*- coding = utf-8 -*-
+# @Time : 2021/7/26
+# @Author : pistachio
+# @File : P29.py
+# @Software : PyCharm
+
+from keras.models import Sequential
+from keras.layers import Conv2D, Activation, MaxPooling2D, Flatten, Dense, Dropout, Reshape
+from keras.optimizers import RMSprop
+from keras.utils.vis_utils import plot_model
+from keras.datasets import mnist
+from keras.utils import np_utils
+import os
+os.environ['PATH'] += os.pathsep + r'C:\Program Files\Graphviz\bin'
+import matplotlib.pyplot as plt
+
+# preprocess mnist dataset
+(X_train, Y_train), (X_test, Y_test) = mnist.load_data()
+X_test1 = X_test
+Y_test1 = Y_test
+X_train = X_train.reshape(-1, 28, 28, 1)
+X_test = X_test.reshape(-1, 28, 28, 1)
+X_train = X_train.reshape(X_train.shape[0], 28, 28, 1)
+X_test = X_test.reshape(X_test.shape[0], 28, 28, 1)
+X_train = X_train.astype('float32') / 255.0
+X_test = X_test.astype('float32') / 255.0
+Y_train = np_utils.to_categorical(Y_train, 10)
+Y_test = np_utils.to_categorical(Y_test, 10)
+
+# use Sequential model build VGG16 network structure
+def vgg16():
+	model = Sequential()
+	model.add(Reshape((28, 28, 1)))
+	model.add(Conv2D(64, (3, 3), padding='same',
+					input_shape=((28, 28, 1)), activation='relu'))
+	model.add(Conv2D(64, (3, 3), padding='same', activation='relu'))
+	
+	model.add(MaxPooling2D(data_format='channels_last', pool_size=(2, 2)))
+	
+	model.add(Conv2D(128, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(128, (3, 3), padding='same', activation='relu'))
+	
+	model.add(MaxPooling2D(data_format='channels_last', pool_size=(2, 2)))
+	
+	model.add(Conv2D(256, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(256, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(256, (3, 3), padding='same', activation='relu'))
+	
+	model.add(MaxPooling2D(data_format='channels_last', pool_size=(2, 2)))
+	
+	model.add(Conv2D(512, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(512, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(512, (3, 3), padding='same', activation='relu'))
+	
+	model.add(MaxPooling2D(data_format='channels_last', pool_size=(2, 2)))
+	
+	model.add(Conv2D(512, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(512, (3, 3), padding='same', activation='relu'))
+	model.add(Conv2D(512, (3, 3), padding='same', activation='relu'))
+	
+	model.add(Flatten())
+	
+	model.add(Dense(256, activation='relu'))
+	model.add(Dropout(0.5))
+	
+	model.add(Dense(256, activation='relu'))
+	model.add(Dropout(0.5))
+	
+	model.add(Dense(10))
+	model.add(Activation('softmax'))
+	
+	model.compile(
+		loss='binary_crossentropy',
+	    optimizer=RMSprop(lr=1e-4),
+	    metrics=['accuracy'])
+	return model
+
+model = vgg16()
+model.build(input_shape=( 100, 28, 28, 1))
+model.summary()
+
+# the compiled vgg16 network structure is trained and predicted
+np_epoch = 4
+batch_size = 256
+
+
+def run_vgg16():
+	Training = model.fit(X_train, Y_train, batch_size=batch_size,
+	                     epochs=np_epoch, validation_split=0.25, verbose=1)
+	predictions = model.predict(X_test, verbose=0)
+	return predictions, Training
+predictions, Training = run_vgg16()
+
+# visual vgg16 network structure
+plot_model(model=model, to_file='model_VGG16.png', show_shapes=True)
+
+# evaluate and predict VGG16 network model
+# use test set evaluate vgg16 network model's accuracy
+Test = model.evaluate(X_test, Y_test)
+print('loss=', Test[0])
+print('accuracy', Test[1])
+
+# draw accuracy curve an val_acc curve during vgg16 training
+def show_Training_acc_history(Training_history, train, validation):
+	plt.plot(Training.history[train], linestyle='-', color='b')
+	plt.plot(Training.history[validation], linestyle='--', color='r')
+	plt.title('Training accuracy history')
+	plt.xlabel('epoch')
+	plt.ylabel('train')
+	plt.legend(['train', 'validation'], loc='upper right')
+	plt.show()
+show_Training_acc_history(Training, 'acc', 'val_acc')
+
+def show_Training_loss_history(Training_history, train, validation):
+	plt.plot(Training.history[train], linestyle='-', color='b')
+	plt.plot(Training.history[validation], linestyle='--', color='r')
+	plt.title('Training loss history')
+	plt.xlabel('epoch')
+	plt.ylabel('train')
+	plt.legend(['train', 'validation'], loc='lower right')
+	plt.show()
+show_Training_loss_history(Training, 'loss', 'val_loss')
+
+# use vgg16 network to make predictions
+def plot_image(image):
+	fig = plt.gcf()
+	fig.set_size_inches(2, 2)
+	plt.imshow(image, cmap='binary')
+	plt.show()
+
+def pre_results(i):
+	plot_image(X_test1[i])
+	print('Y_test1=', Y_test1[i])
+	print('pre_result=', predictions[i])
+pre_results(0)
+
+
+
